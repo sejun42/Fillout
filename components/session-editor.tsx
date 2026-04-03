@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, Plus, Save, Search, Trash2, X } from "lucide-react";
+import { CheckCircle2, Copy, LoaderCircle, Plus, Save, Search, Trash2, X } from "lucide-react";
 import { useState } from "react";
 
 import { useWorkoutApp } from "@/components/providers/workout-app-provider";
@@ -76,6 +76,17 @@ function SessionEditorForm({
   const [draft, setDraft] = useState<WorkoutSession>(initialSession);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">(
+    existingSessionId ? "saved" : "idle",
+  );
+  const [savedAtLabel, setSavedAtLabel] = useState<string | null>(
+    existingSessionId
+      ? new Date(initialSession.updatedAt).toLocaleTimeString("ko-KR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : null,
+  );
   const existingSession = existingSessionId
     ? state.sessions.find((session) => session.id === existingSessionId) ?? null
     : null;
@@ -89,6 +100,7 @@ function SessionEditorForm({
     .sort((left, right) => Number(right.isSystem) - Number(left.isSystem));
 
   function patchDraft(updater: (current: WorkoutSession) => WorkoutSession) {
+    setSaveState("idle");
     setDraft((current) => (current ? updater(current) : current));
   }
 
@@ -214,17 +226,46 @@ function SessionEditorForm({
             </button>
             <button
               type="button"
-              className={buttonStyles("primary")}
-              disabled={!hasRequiredInput}
+              className={`${buttonStyles("primary")} relative text-transparent`}
+              disabled={!hasRequiredInput || saveState === "saving"}
               onClick={async () => {
                 try {
-                  await saveSession(normalizeBeforeSave());
+                  const normalizedSession = normalizeBeforeSave();
+                  setSaveState("saving");
+                  await saveSession(normalizedSession);
+                  setDraft(normalizedSession);
+                  setSaveState("saved");
+                  setSavedAtLabel(
+                    new Date().toLocaleTimeString("ko-KR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }),
+                  );
                 } catch (error) {
+                  setSaveState("idle");
                   window.alert(error instanceof Error ? error.message : "세션 저장에 실패했습니다.");
                 }
               }}
             >
-              <Save className="mr-2 h-4 w-4" />
+              <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-white">
+                {saveState === "saving" ? (
+                  <>
+                    <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                    저장 중...
+                  </>
+                ) : saveState === "saved" ? (
+                  <>
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    저장 완료
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    저장
+                  </>
+                )}
+              </span>
+              <Save className="mr-2 h-4 w-4 opacity-0" />
               저장
             </button>
           </div>
@@ -241,6 +282,21 @@ function SessionEditorForm({
           <Pill>{summarizeSessionTitle(draft, state.bodyParts)}</Pill>
           <Pill>운동 {draft.exercises.length}개</Pill>
           <Pill>저장 상태 {existingSession ? "기존 세션 수정" : "새 세션"}</Pill>
+          <Pill
+            className={
+              saveState === "saved"
+                ? "bg-[#e8f7ee] text-[#21573d]"
+                : saveState === "saving"
+                  ? "bg-[#eef4fb] text-[#355577]"
+                  : "bg-[#fff4e8] text-[#8b4a18]"
+            }
+          >
+            {saveState === "saved"
+              ? `저장됨${savedAtLabel ? ` · ${savedAtLabel}` : ""}`
+              : saveState === "saving"
+                ? "저장 중"
+                : "저장 필요"}
+          </Pill>
           {isSyncing ? <Pill>Supabase 동기화 중</Pill> : null}
           {syncError ? <Pill className="bg-[#a93f3a] text-white">{syncError}</Pill> : null}
           {existingSession ? (
