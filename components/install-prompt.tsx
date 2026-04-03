@@ -77,12 +77,12 @@ export function InstallPrompt() {
   }
 
   return (
-    <Card className="overflow-hidden bg-[linear-gradient(135deg,_rgba(16,37,63,0.98),_rgba(24,78,119,0.9))] text-white">
-      <p className="text-xs font-semibold uppercase tracking-[0.26em] text-[#8fc8ff]">PWA</p>
-      <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <Card className="overflow-hidden p-4 bg-[linear-gradient(135deg,_rgba(16,37,63,0.98),_rgba(24,78,119,0.9))] text-white">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-[#8fc8ff]">PWA</p>
+      <div className="mt-1.5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <h3 className="text-lg font-semibold tracking-[-0.03em]">홈 화면에 추가해서 앱처럼 사용</h3>
-          <p className="text-sm leading-6 text-white/74">
+          <h3 className="text-base font-medium tracking-[-0.03em]">홈 화면에 추가해서 앱처럼 사용</h3>
+          <p className="text-xs leading-5 text-white/74">
             운동 중 빠르게 열 수 있도록 설치형 사용을 지원합니다.
             {isIos
               ? " iPhone에서는 공유 버튼 후 '홈 화면에 추가'를 사용하세요."
@@ -94,7 +94,7 @@ export function InstallPrompt() {
             설치하기
           </button>
         ) : (
-          <span className="rounded-full bg-white/12 px-3 py-2 text-xs text-white/70">
+          <span className="rounded-full bg-white/12 px-3 py-1.5 text-[11px] text-white/70">
             설치 가능 조건을 만족하면 버튼이 자동 표시됩니다
           </span>
         )}

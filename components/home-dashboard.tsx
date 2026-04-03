@@ -23,15 +23,37 @@ export function HomeDashboard() {
   const bodyPartMap = new Map(state.bodyParts.map((bodyPart) => [bodyPart.id, bodyPart]));
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <InstallPrompt />
 
+      {recommendations.length > 0 ? (
+        <section className={`grid gap-3 ${recommendations.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+          {recommendations.map((banner) => (
+            <Card
+              key={banner.id}
+              className={banner.tone === "warning" ? "p-3 bg-[#fff1ec]" : "p-3 bg-[#eef7ff]"}
+            >
+              <div className="flex items-start gap-2.5">
+                <div className="rounded-[16px] bg-white/80 p-2 text-[#10253f]">
+                  <Sparkles className="h-4 w-4" />
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#4d6f8f]">추천 배너</p>
+                  <h3 className="text-sm font-semibold leading-5 tracking-[-0.02em] text-[#10253f]">{banner.title}</h3>
+                  <p className="text-[11px] leading-4 text-[#56697f] sm:text-xs sm:leading-5">{banner.detail}</p>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </section>
+      ) : null}
+
       <section className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
-        <Card className="space-y-5">
+        <Card className="space-y-4 p-4 sm:p-5">
           <SectionHeading
             eyebrow="Calendar"
             title="월간 운동 흐름"
-            description="날짜별 세션을 눌러 바로 수정하거나 새 세션을 시작할 수 있습니다."
+            description="날짜를 눌러 바로 수정하거나 새 세션을 시작합니다."
             action={
               <div className="flex items-center gap-2">
                 <button type="button" onClick={() => setMonth((current) => addMonths(current, -1))} className={buttonStyles("ghost")}>
@@ -45,22 +67,22 @@ export function HomeDashboard() {
           />
 
           <div className="flex flex-wrap items-center gap-2">
-            <p className="mr-2 text-base font-semibold text-[#10253f]">{formatMonthLabel(month)}</p>
+            <p className="mr-2 text-sm font-semibold text-[#10253f] sm:text-base">{formatMonthLabel(month)}</p>
             {state.bodyParts.map((bodyPart) => (
-              <Pill key={bodyPart.id} className="gap-1 bg-white">
+              <Pill key={bodyPart.id} className="gap-1 bg-white px-2 py-1 text-[11px] sm:text-xs">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: bodyPart.color }} />
                 {bodyPart.name}
               </Pill>
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-[0.16em] text-[#7d8ea1]">
+          <div className="grid grid-cols-7 gap-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.16em] text-[#7d8ea1] sm:gap-2 sm:text-xs">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((label) => (
               <span key={label}>{label}</span>
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-2">
+          <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
             {days.map((day) => {
               const dots = getSessionDotsForDate(state.sessions, day.iso);
               const remaining = dots.length > 3 ? dots.length - 3 : 0;
@@ -70,7 +92,7 @@ export function HomeDashboard() {
                 <Link
                   key={day.iso}
                   href={`/session/${day.iso}`}
-                  className={`rounded-[20px] border p-3 text-left transition ${
+                  className={`flex min-h-[72px] flex-col rounded-[18px] border px-2 py-2 text-left transition sm:min-h-[80px] sm:px-2.5 ${
                     day.isCurrentMonth
                       ? "border-white/60 bg-white/90 hover:-translate-y-0.5"
                       : "border-transparent bg-white/35 text-[#8ea1b3]"
@@ -78,9 +100,9 @@ export function HomeDashboard() {
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold">{day.dayNumber}</span>
-                    {session ? <span className="text-[10px] text-[#6580a0]">edit</span> : null}
+                    {session ? <span className="text-[9px] text-[#6580a0]">edit</span> : null}
                   </div>
-                  <div className="mt-6 flex items-center gap-1">
+                  <div className="mt-auto flex items-center gap-1">
                     {dots.slice(0, 3).map((bodyPartId) => (
                       <span
                         key={`${day.iso}:${bodyPartId}`}
@@ -93,8 +115,8 @@ export function HomeDashboard() {
                 </Link>
               );
             })}
-          </div>
-        </Card>
+            </div>
+          </Card>
 
         <div className="space-y-4">
           <Card>
@@ -140,26 +162,6 @@ export function HomeDashboard() {
             </div>
           </Card>
         </div>
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-2">
-        {recommendations.map((banner) => (
-          <Card
-            key={banner.id}
-            className={banner.tone === "warning" ? "bg-[#fff1ec]" : "bg-[#eef7ff]"}
-          >
-            <div className="flex gap-3">
-              <div className="rounded-2xl bg-white/80 p-3 text-[#10253f]">
-                <Sparkles className="h-5 w-5" />
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#4d6f8f]">추천 배너</p>
-                <h3 className="text-lg font-semibold tracking-[-0.03em] text-[#10253f]">{banner.title}</h3>
-                <p className="text-sm leading-6 text-[#56697f]">{banner.detail}</p>
-              </div>
-            </div>
-          </Card>
-        ))}
       </section>
 
       <Card>

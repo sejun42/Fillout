@@ -20,23 +20,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_#ffe7cf_0,_#f7f3ea_38%,_#eaf3fb_100%)]">
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 pb-28 pt-5 sm:px-6 lg:px-8">
-        <header className="mb-5 flex items-start justify-between gap-4 rounded-[28px] border border-white/70 bg-[#10253f] px-5 py-4 text-white shadow-[0_24px_60px_rgba(16,37,63,0.18)]">
-          <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/70">Fillout</p>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-semibold tracking-[-0.04em]">Gym Memory Board</h1>
-              <Dumbbell className="h-5 w-5 text-[#ffb36b]" />
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 pb-28 pt-4 sm:px-6 lg:px-8">
+        <header className="mb-4 flex items-start justify-between gap-3 rounded-[24px] border border-white/70 bg-[#10253f] px-4 py-3 text-white shadow-[0_20px_48px_rgba(16,37,63,0.16)]">
+          <div className="space-y-0.5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/70">Fillout</p>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-[1.7rem] font-medium tracking-[-0.04em] sm:text-[1.95rem]">Gym Memory Board</h1>
+              <Dumbbell className="h-4 w-4 text-[#ffb36b]" />
             </div>
-            <p className="text-sm text-white/72">
+            <p className="max-w-[18rem] text-xs leading-5 text-white/72 sm:max-w-[22rem] sm:text-sm">
               머신 브랜드, 세팅값, 지난 기록 비교까지 한 번에 관리합니다.
             </p>
           </div>
-          <div className="space-y-2 text-right">
-            <p className="text-sm font-medium">
+          <div className="space-y-1 text-right">
+            <p className="text-xs font-medium sm:text-sm">
               {state.profile ? `${state.profile.nickname ?? state.profile.email}` : "로그인 필요"}
             </p>
-            <p className="text-xs text-white/70">
+            <p className="text-[11px] text-white/70 sm:text-xs">
               {supabaseConfigured ? "Supabase ready" : "Demo data mode"}
             </p>
           </div>
@@ -45,7 +45,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {!state.profile ? (
           <Link
             href="/login"
-            className="mb-5 rounded-[24px] border border-[#ffd6b0] bg-[#fff4e8] px-4 py-3 text-sm font-medium text-[#9a4f1b]"
+            className="mb-4 rounded-[22px] border border-[#ffd6b0] bg-[#fff4e8] px-4 py-2.5 text-sm font-medium text-[#9a4f1b]"
           >
             로그인 세션이 없습니다. 이메일 로그인 또는 데모 진입을 위해 이동
           </Link>
