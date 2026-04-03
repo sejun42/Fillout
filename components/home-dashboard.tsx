@@ -29,19 +29,23 @@ export function HomeDashboard() {
       {recommendations.length > 0 ? (
         <section className="space-y-2">
           {recommendations.map((banner) => (
-            <Card
+            <div
               key={banner.id}
-              className={banner.tone === "warning" ? "p-0 bg-[#fff1ec]" : "p-0 bg-[#eef7ff]"}
+              className={
+                banner.tone === "warning"
+                  ? "rounded-[20px] border border-white/70 bg-[#fff1ec] px-3 py-2 shadow-[0_12px_30px_rgba(16,37,63,0.06)]"
+                  : "rounded-[20px] border border-white/70 bg-[#eef7ff] px-3 py-2 shadow-[0_12px_30px_rgba(16,37,63,0.06)]"
+              }
             >
-              <div className="flex items-center gap-2 px-3 py-2.5">
-                <div className="rounded-full bg-white/80 p-1.5 text-[#10253f]">
-                  <Sparkles className="h-3.5 w-3.5" />
+              <div className="flex items-center gap-2">
+                <div className="rounded-full bg-white/80 p-1 text-[#10253f]">
+                  <Sparkles className="h-3 w-3" />
                 </div>
-                <p className="min-w-0 flex-1 truncate text-sm font-medium leading-5 text-[#10253f]" title={banner.title}>
+                <p className="min-w-0 flex-1 truncate text-[13px] font-medium leading-4 text-[#10253f]" title={banner.title}>
                   {banner.title}
                 </p>
               </div>
-            </Card>
+            </div>
           ))}
         </section>
       ) : null}
