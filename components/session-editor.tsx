@@ -93,7 +93,7 @@ function SessionEditorForm({
   const comparison = getSessionComparison(state, sessionDate);
   const exerciseLookup = new Map(state.exercises.map((exercise) => [exercise.id, exercise]));
   const machineLookup = new Map(state.machines.map((machine) => [machine.id, machine]));
-  const hasRequiredInput = draft.bodyPartIds.length > 0 && draft.exercises.length > 0;
+  const hasRequiredInput = draft.bodyPartIds.length > 0;
 
   const filteredExercises = state.exercises
     .filter((exercise) => exercise.name.toLowerCase().includes(search.trim().toLowerCase()))

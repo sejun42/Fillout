@@ -28,6 +28,12 @@ function assertNoError<T>(result: { data: T; error: { message: string } | null }
   return result.data as NonNullable<T>;
 }
 
+function assertMutationNoError(result: { error: { message: string } | null }, label: string) {
+  if (result.error) {
+    throw new Error(`${label}: ${result.error.message}`);
+  }
+}
+
 function mapProfile(user: User, nickname: string | null): Profile {
   const fallbackUpdatedAt = new Date().toISOString();
   return {
@@ -287,30 +293,30 @@ export async function saveSessionToSupabase(
   );
 
   if (existingExerciseIds.length > 0) {
-    assertNoError(
+    assertMutationNoError(
       await supabase
         .from("session_exercise_setting_values")
         .delete()
         .in("session_exercise_id", existingExerciseIds),
       "Failed to clear setting values",
     );
-    assertNoError(
+    assertMutationNoError(
       await supabase.from("session_exercise_sets").delete().in("session_exercise_id", existingExerciseIds),
       "Failed to clear sets",
     );
   }
 
-  assertNoError(
+  assertMutationNoError(
     await supabase.from("session_exercises").delete().eq("session_id", sessionId),
     "Failed to clear exercises",
   );
-  assertNoError(
+  assertMutationNoError(
     await supabase.from("workout_session_body_parts").delete().eq("session_id", sessionId),
     "Failed to clear body parts",
   );
 
   if (session.bodyPartIds.length > 0) {
-    assertNoError(
+    assertMutationNoError(
       await supabase.from("workout_session_body_parts").insert(
         session.bodyPartIds.map((bodyPartId) => ({
           session_id: sessionId,
@@ -370,14 +376,14 @@ export async function saveSessionToSupabase(
   }
 
   if (settingRows.length > 0) {
-    assertNoError(
+    assertMutationNoError(
       await supabase.from("session_exercise_setting_values").insert(settingRows),
       "Failed to save setting values",
     );
   }
 
   if (setRowsPayload.length > 0) {
-    assertNoError(
+    assertMutationNoError(
       await supabase.from("session_exercise_sets").insert(setRowsPayload),
       "Failed to save sets",
     );
@@ -391,7 +397,7 @@ export async function deleteSessionFromSupabase(
   userId: string,
   sessionId: string,
 ) {
-  assertNoError(
+  assertMutationNoError(
     await supabase.from("workout_sessions").delete().eq("id", sessionId).eq("user_id", userId),
     "Failed to delete session",
   );
@@ -579,7 +585,7 @@ export async function createSharedMachineInSupabase(
   const machine = mapMachine(assertNoError(insertedMachine, "Failed to create machine"));
 
   if (input.templates.length > 0) {
-    assertNoError(
+    assertMutationNoError(
       await supabase.from("machine_setting_templates").insert(
         input.templates.map((template) => ({
           machine_id: machine.id,
