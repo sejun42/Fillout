@@ -72,7 +72,7 @@ function SessionEditorForm({
   existingSessionId: string | null;
 }) {
   const router = useRouter();
-  const { state, saveSession, deleteSession } = useWorkoutApp();
+  const { state, saveSession, deleteSession, isSyncing, syncError } = useWorkoutApp();
   const [draft, setDraft] = useState<WorkoutSession>(initialSession);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -216,7 +216,13 @@ function SessionEditorForm({
               type="button"
               className={buttonStyles("primary")}
               disabled={!hasRequiredInput}
-              onClick={() => saveSession(normalizeBeforeSave())}
+              onClick={async () => {
+                try {
+                  await saveSession(normalizeBeforeSave());
+                } catch (error) {
+                  window.alert(error instanceof Error ? error.message : "세션 저장에 실패했습니다.");
+                }
+              }}
             >
               <Save className="mr-2 h-4 w-4" />
               저장
@@ -235,14 +241,20 @@ function SessionEditorForm({
           <Pill>{summarizeSessionTitle(draft, state.bodyParts)}</Pill>
           <Pill>운동 {draft.exercises.length}개</Pill>
           <Pill>저장 상태 {existingSession ? "기존 세션 수정" : "새 세션"}</Pill>
+          {isSyncing ? <Pill>Supabase 동기화 중</Pill> : null}
+          {syncError ? <Pill className="bg-[#a93f3a] text-white">{syncError}</Pill> : null}
           {existingSession ? (
             <button
               type="button"
               className={buttonStyles("danger")}
-              onClick={() => {
+              onClick={async () => {
                 if (window.confirm("이 날짜의 세션을 삭제할까요?")) {
-                  deleteSession(existingSession.id);
-                  router.push("/");
+                  try {
+                    await deleteSession(existingSession.id);
+                    router.push("/");
+                  } catch (error) {
+                    window.alert(error instanceof Error ? error.message : "세션 삭제에 실패했습니다.");
+                  }
                 }
               }}
             >

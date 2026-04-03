@@ -9,8 +9,20 @@ import { settingTemplatePresets } from "@/lib/mock-data";
 import { getBodyPartName, getBrandName, getMachineTemplates } from "@/lib/workout";
 import { exerciseTypes } from "@/types/domain";
 
+function getSourceLabel(options: { isSystem: boolean; isShared?: boolean }) {
+  if (options.isSystem) {
+    return "기본";
+  }
+
+  if (options.isShared) {
+    return "공용";
+  }
+
+  return "내 항목";
+}
+
 export function LibraryDashboard() {
-  const { state, addBrand, addExercise, addMachine } = useWorkoutApp();
+  const { state, addBrand, addExercise, addMachine, isSyncing, syncError } = useWorkoutApp();
   const [brandName, setBrandName] = useState("");
   const [exerciseName, setExerciseName] = useState("");
   const [exerciseBodyPartId, setExerciseBodyPartId] = useState("chest");
@@ -27,32 +39,74 @@ export function LibraryDashboard() {
     );
   }
 
+  async function handleBrandSubmit() {
+    try {
+      await addBrand(brandName);
+      setBrandName("");
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "브랜드 저장에 실패했습니다.");
+    }
+  }
+
+  async function handleExerciseSubmit() {
+    try {
+      await addExercise(exerciseName, exerciseBodyPartId, exerciseType);
+      setExerciseName("");
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "운동 저장에 실패했습니다.");
+    }
+  }
+
+  async function handleMachineSubmit() {
+    try {
+      await addMachine({
+        name: machineName,
+        brandId: machineBrandId === "__custom__" ? null : machineBrandId,
+        brandNameFallback: machineBrandId === "__custom__" ? machineBrandFallback : null,
+        primaryBodyPartId: machineBodyPartId,
+        templateKeys: selectedTemplateKeys,
+      });
+      setMachineName("");
+      setMachineBrandFallback("");
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "머신 저장에 실패했습니다.");
+    }
+  }
+
   return (
     <div className="space-y-5">
+      {state.mode === "supabase" ? (
+        <Card className="bg-[linear-gradient(135deg,_rgba(16,37,63,0.98),_rgba(20,88,135,0.86))] text-white">
+          <SectionHeading
+            eyebrow="Shared library"
+            title="머신과 브랜드는 공용 라이브러리로 저장됩니다"
+            description="한 번 추가한 머신 정보는 다른 사용자도 선택할 수 있습니다."
+          />
+          <div className="mt-4 flex flex-wrap gap-2 text-sm text-white/75">
+            <Pill className="bg-white/14 text-white">현재 모드: {state.mode}</Pill>
+            {isSyncing ? <Pill className="bg-white/14 text-white">Supabase 동기화 중</Pill> : null}
+            {syncError ? <Pill className="bg-[#a93f3a] text-white">{syncError}</Pill> : null}
+          </div>
+        </Card>
+      ) : null}
+
       <section className="grid gap-4 xl:grid-cols-3">
         <Card className="space-y-4">
-          <SectionHeading eyebrow="Custom brand" title="브랜드 추가" description="기본 드롭다운에 없는 브랜드를 등록합니다." />
+          <SectionHeading eyebrow="Custom brand" title="브랜드 추가" description="Supabase 로그인 상태에서는 공용 브랜드로 저장됩니다." />
           <input
             value={brandName}
             onChange={(event) => setBrandName(event.target.value)}
             placeholder="예: Arsenal Strength"
             className="w-full rounded-2xl border border-[#d5dfeb] bg-white px-4 py-3 text-sm outline-none ring-0"
           />
-          <button
-            type="button"
-            className={buttonStyles("primary")}
-            onClick={() => {
-              addBrand(brandName);
-              setBrandName("");
-            }}
-          >
+          <button type="button" className={buttonStyles("primary")} onClick={handleBrandSubmit} disabled={isSyncing}>
             <Plus className="mr-2 h-4 w-4" />
             브랜드 저장
           </button>
         </Card>
 
         <Card className="space-y-4">
-          <SectionHeading eyebrow="Custom exercise" title="운동 추가" description="기본 라이브러리에 없는 운동을 추가합니다." />
+          <SectionHeading eyebrow="Custom exercise" title="운동 추가" description="운동 정의는 로그인 사용자 기준 커스텀 항목으로 저장됩니다." />
           <input
             value={exerciseName}
             onChange={(event) => setExerciseName(event.target.value)}
@@ -83,21 +137,14 @@ export function LibraryDashboard() {
               ))}
             </select>
           </div>
-          <button
-            type="button"
-            className={buttonStyles("primary")}
-            onClick={() => {
-              addExercise(exerciseName, exerciseBodyPartId, exerciseType);
-              setExerciseName("");
-            }}
-          >
+          <button type="button" className={buttonStyles("primary")} onClick={handleExerciseSubmit} disabled={isSyncing}>
             <Plus className="mr-2 h-4 w-4" />
             운동 저장
           </button>
         </Card>
 
         <Card className="space-y-4">
-          <SectionHeading eyebrow="Custom machine" title="머신 추가" description="브랜드와 세팅 필드를 함께 등록합니다." />
+          <SectionHeading eyebrow="Custom machine" title="머신 추가" description="새 머신은 세팅 필드와 함께 공용 라이브러리에 등록됩니다." />
           <input
             value={machineName}
             onChange={(event) => setMachineName(event.target.value)}
@@ -153,21 +200,7 @@ export function LibraryDashboard() {
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            className={buttonStyles("primary")}
-            onClick={() => {
-              addMachine({
-                name: machineName,
-                brandId: machineBrandId === "__custom__" ? null : machineBrandId,
-                brandNameFallback: machineBrandId === "__custom__" ? machineBrandFallback : null,
-                primaryBodyPartId: machineBodyPartId,
-                templateKeys: selectedTemplateKeys,
-              });
-              setMachineName("");
-              setMachineBrandFallback("");
-            }}
-          >
+          <button type="button" className={buttonStyles("primary")} onClick={handleMachineSubmit} disabled={isSyncing}>
             <Plus className="mr-2 h-4 w-4" />
             머신 저장
           </button>
@@ -178,62 +211,71 @@ export function LibraryDashboard() {
         <Card>
           <SectionHeading eyebrow="Exercises" title={`${state.exercises.length}개 운동`} description="시스템 + 내 커스텀 운동" />
           <div className="mt-4 space-y-2">
-            {state.exercises.slice().sort((left, right) => left.name.localeCompare(right.name)).map((exercise) => (
-              <div key={exercise.id} className="rounded-[20px] bg-[#f5f8fb] p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-[#10253f]">{exercise.name}</p>
-                  <Pill className={exercise.isSystem ? "bg-white" : "bg-[#10253f] text-white"}>
-                    {exercise.isSystem ? "기본" : "커스텀"}
-                  </Pill>
-                </div>
-                <p className="mt-2 text-xs text-[#667b92]">
-                  {getBodyPartName(exercise.primaryBodyPartId, state.bodyParts)} · {exercise.exerciseType}
-                </p>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card>
-          <SectionHeading eyebrow="Brands" title={`${state.brands.length}개 브랜드`} description="기본 제공 + 추가 브랜드" />
-          <div className="mt-4 space-y-2">
-            {state.brands.slice().sort((left, right) => left.name.localeCompare(right.name)).map((brand) => (
-              <div key={brand.id} className="rounded-[20px] bg-[#f5f8fb] p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-[#10253f]">{brand.name}</p>
-                  <Pill className={brand.isSystem ? "bg-white" : "bg-[#10253f] text-white"}>
-                    {brand.isSystem ? "기본" : "내 브랜드"}
-                  </Pill>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card>
-          <SectionHeading eyebrow="Machines" title={`${state.machines.length}개 머신`} description="세팅 필드까지 저장된 머신 목록" />
-          <div className="mt-4 space-y-2">
-            {state.machines.slice().sort((left, right) => left.name.localeCompare(right.name)).map((machine) => (
-              <div key={machine.id} className="rounded-[20px] bg-[#f5f8fb] p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-[#10253f]">{machine.name}</p>
-                    <p className="mt-1 text-xs text-[#667b92]">
-                      {getBrandName(machine, state.brands)} ·{" "}
-                      {machine.primaryBodyPartId ? getBodyPartName(machine.primaryBodyPartId, state.bodyParts) : "부위 미지정"}
-                    </p>
+            {state.exercises
+              .slice()
+              .sort((left, right) => left.name.localeCompare(right.name))
+              .map((exercise) => (
+                <div key={exercise.id} className="rounded-[20px] bg-[#f5f8fb] p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-[#10253f]">{exercise.name}</p>
+                    <Pill className={exercise.isSystem ? "bg-white" : "bg-[#10253f] text-white"}>
+                      {getSourceLabel({ isSystem: exercise.isSystem })}
+                    </Pill>
                   </div>
-                  <Pill className={machine.isSystem ? "bg-white" : "bg-[#10253f] text-white"}>
-                    {machine.isSystem ? "기본" : "커스텀"}
-                  </Pill>
+                  <p className="mt-2 text-xs text-[#667b92]">
+                    {getBodyPartName(exercise.primaryBodyPartId, state.bodyParts)} · {exercise.exerciseType}
+                  </p>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {getMachineTemplates(machine.id, state.machineSettingTemplates).map((template) => (
-                    <Pill key={template.id}>{template.fieldLabel}</Pill>
-                  ))}
+              ))}
+          </div>
+        </Card>
+
+        <Card>
+          <SectionHeading eyebrow="Brands" title={`${state.brands.length}개 브랜드`} description="기본 + 공용 + 내 브랜드" />
+          <div className="mt-4 space-y-2">
+            {state.brands
+              .slice()
+              .sort((left, right) => left.name.localeCompare(right.name))
+              .map((brand) => (
+                <div key={brand.id} className="rounded-[20px] bg-[#f5f8fb] p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-[#10253f]">{brand.name}</p>
+                    <Pill className={brand.isSystem ? "bg-white" : "bg-[#10253f] text-white"}>
+                      {getSourceLabel({ isSystem: brand.isSystem, isShared: brand.isShared })}
+                    </Pill>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+          </div>
+        </Card>
+
+        <Card>
+          <SectionHeading eyebrow="Machines" title={`${state.machines.length}개 머신`} description="다른 사용자와 공유되는 공용 머신 포함" />
+          <div className="mt-4 space-y-2">
+            {state.machines
+              .slice()
+              .sort((left, right) => left.name.localeCompare(right.name))
+              .map((machine) => (
+                <div key={machine.id} className="rounded-[20px] bg-[#f5f8fb] p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-[#10253f]">{machine.name}</p>
+                      <p className="mt-1 text-xs text-[#667b92]">
+                        {getBrandName(machine, state.brands)} ·{" "}
+                        {machine.primaryBodyPartId ? getBodyPartName(machine.primaryBodyPartId, state.bodyParts) : "부위 미지정"}
+                      </p>
+                    </div>
+                    <Pill className={machine.isSystem ? "bg-white" : "bg-[#10253f] text-white"}>
+                      {getSourceLabel({ isSystem: machine.isSystem, isShared: machine.isShared })}
+                    </Pill>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {getMachineTemplates(machine.id, state.machineSettingTemplates).map((template) => (
+                      <Pill key={template.id}>{template.fieldLabel}</Pill>
+                    ))}
+                  </div>
+                </div>
+              ))}
           </div>
         </Card>
       </section>

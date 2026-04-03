@@ -91,7 +91,20 @@ export function syncSettingsWithTemplates(
 }
 
 export function buildMachineTemplates(input: NewMachineInput, machineId: string): MachineSettingTemplate[] {
-  return input.templateKeys.flatMap((key, index) => {
+  return buildMachineTemplateDescriptors(input).map((template, index) => ({
+    id: createId("template"),
+    machineId,
+    fieldKey: template.fieldKey,
+    fieldLabel: template.fieldLabel,
+    fieldType: template.fieldType,
+    options: template.options,
+    sortOrder: index + 1,
+    createdAt: new Date().toISOString(),
+  }));
+}
+
+export function buildMachineTemplateDescriptors(input: NewMachineInput) {
+  return input.templateKeys.flatMap((key) => {
     const preset = settingTemplatePresets.find((item) => item.key === key);
 
     if (!preset) {
@@ -100,14 +113,10 @@ export function buildMachineTemplates(input: NewMachineInput, machineId: string)
 
     return [
       {
-        id: createId("template"),
-        machineId,
         fieldKey: preset.key,
         fieldLabel: preset.label,
         fieldType: preset.fieldType,
         options: preset.options ? [...preset.options] : null,
-        sortOrder: index + 1,
-        createdAt: new Date().toISOString(),
       },
     ];
   });

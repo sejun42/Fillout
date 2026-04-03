@@ -52,7 +52,9 @@ export function InstallPrompt() {
           <h3 className="text-lg font-semibold tracking-[-0.03em]">홈 화면에 추가해서 앱처럼 사용</h3>
           <p className="text-sm leading-6 text-white/74">
             운동 중 빠르게 열 수 있도록 설치형 사용을 지원합니다.
-            {isIos ? " iPhone에서는 공유 버튼 후 '홈 화면에 추가'를 사용하세요." : ""}
+            {isIos
+              ? " iPhone에서는 공유 버튼 후 '홈 화면에 추가'를 사용하세요."
+              : " 설치 버튼이 안 보이면 브라우저 메뉴에서 'Install' 또는 '홈 화면에 추가'를 확인하세요."}
           </p>
         </div>
         {deferredPrompt ? (
@@ -61,7 +63,7 @@ export function InstallPrompt() {
           </button>
         ) : (
           <span className="rounded-full bg-white/12 px-3 py-2 text-xs text-white/70">
-            브라우저가 설치 가능 조건을 만족하면 버튼이 표시됩니다
+            설치 가능 조건을 만족하면 버튼이 자동 표시됩니다
           </span>
         )}
       </div>

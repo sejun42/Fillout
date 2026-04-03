@@ -60,6 +60,7 @@ export interface BrandDefinition {
   ownerUserId: string | null;
   name: string;
   isSystem: boolean;
+  isShared: boolean;
   createdAt: string;
 }
 
@@ -71,6 +72,7 @@ export interface MachineDefinition {
   name: string;
   primaryBodyPartId: string | null;
   isSystem: boolean;
+  isShared: boolean;
   createdAt: string;
   updatedAt: string;
 }

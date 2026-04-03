@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { type FormEvent, useState } from "react";
 
 import { useWorkoutApp } from "@/components/providers/workout-app-provider";
 import { Card, SectionHeading, buttonStyles } from "@/components/ui";
@@ -55,7 +55,11 @@ export function LoginPanel() {
         throw result.error;
       }
 
-      signIn(trimmedEmail, "supabase");
+      if (mode === "sign-up" && !result.data.session) {
+        setError("회원가입은 완료됐습니다. 이메일 인증 후 다시 로그인하세요.");
+        return;
+      }
+
       router.replace("/");
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "로그인에 실패했습니다.");
@@ -69,9 +73,11 @@ export function LoginPanel() {
       <div className="grid w-full gap-4 lg:grid-cols-[1.1fr_0.9fr]">
         <Card className="bg-[linear-gradient(135deg,_rgba(16,37,63,0.98),_rgba(20,88,135,0.86))] text-white">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#8fc8ff]">Fillout MVP</p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-[-0.05em]">헬스장 기구 환경까지 저장하는 운동 기록 앱</h1>
+          <h1 className="mt-3 text-4xl font-semibold tracking-[-0.05em]">
+            머신 세팅까지 기억하는 운동 기록 앱
+          </h1>
           <p className="mt-4 max-w-xl text-sm leading-7 text-white/76">
-            캘린더, 머신 브랜드, 안장 높이, 패드 위치, 이전 세트 기록, 주간 통계를 한 흐름으로 연결했습니다.
+            캘린더, 머신 브랜드, 안장 높이, 패드 위치, 이전 세트 기록, 주간 통계를 하나의 흐름으로 연결했습니다.
           </p>
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
             <div className="rounded-[24px] bg-white/10 p-4">
@@ -89,20 +95,28 @@ export function LoginPanel() {
           <SectionHeading
             eyebrow="Auth"
             title={mode === "sign-in" ? "로그인" : "회원가입"}
-            description={supabaseConfigured ? "Supabase Auth 연결이 활성화되어 있습니다." : "환경 변수가 없으므로 데모 로그인으로 동작합니다."}
+            description={
+              supabaseConfigured
+                ? "Supabase Auth로 로그인하면 기기간 동기화가 됩니다."
+                : "환경 변수가 없으면 로컬 전용 개인 워크스페이스로 동작합니다."
+            }
           />
           <div className="mt-4 inline-flex rounded-full bg-[#edf3f9] p-1">
             <button
               type="button"
               onClick={() => setMode("sign-in")}
-              className={`rounded-full px-4 py-2 text-sm font-medium ${mode === "sign-in" ? "bg-[#10253f] text-white" : "text-[#506981]"}`}
+              className={`rounded-full px-4 py-2 text-sm font-medium ${
+                mode === "sign-in" ? "bg-[#10253f] text-white" : "text-[#506981]"
+              }`}
             >
               로그인
             </button>
             <button
               type="button"
               onClick={() => setMode("sign-up")}
-              className={`rounded-full px-4 py-2 text-sm font-medium ${mode === "sign-up" ? "bg-[#10253f] text-white" : "text-[#506981]"}`}
+              className={`rounded-full px-4 py-2 text-sm font-medium ${
+                mode === "sign-up" ? "bg-[#10253f] text-white" : "text-[#506981]"
+              }`}
             >
               회원가입
             </button>
