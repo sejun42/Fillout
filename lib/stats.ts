@@ -281,7 +281,7 @@ export function getRecommendationBanners(state: WorkoutAppState, today = new Dat
       banners.push({
         id: `low:${bodyPart.id}`,
         title: `최근 2주간 ${bodyPart.name} 빈도가 낮습니다`,
-        detail: "다음 세션 후보 부위로 우선 노출하는 것이 좋습니다.",
+        detail: "최근 루틴에서 우선 보완이 필요합니다.",
         bodyPartId: bodyPart.id,
         tone: "balance",
       });

@@ -27,21 +27,19 @@ export function HomeDashboard() {
       <InstallPrompt />
 
       {recommendations.length > 0 ? (
-        <section className={`grid gap-3 ${recommendations.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+        <section className="space-y-2">
           {recommendations.map((banner) => (
             <Card
               key={banner.id}
-              className={banner.tone === "warning" ? "p-3 bg-[#fff1ec]" : "p-3 bg-[#eef7ff]"}
+              className={banner.tone === "warning" ? "p-0 bg-[#fff1ec]" : "p-0 bg-[#eef7ff]"}
             >
-              <div className="flex items-start gap-2.5">
-                <div className="rounded-[16px] bg-white/80 p-2 text-[#10253f]">
-                  <Sparkles className="h-4 w-4" />
+              <div className="flex items-center gap-2 px-3 py-2.5">
+                <div className="rounded-full bg-white/80 p-1.5 text-[#10253f]">
+                  <Sparkles className="h-3.5 w-3.5" />
                 </div>
-                <div className="space-y-0.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#4d6f8f]">추천 배너</p>
-                  <h3 className="text-sm font-semibold leading-5 tracking-[-0.02em] text-[#10253f]">{banner.title}</h3>
-                  <p className="text-[11px] leading-4 text-[#56697f] sm:text-xs sm:leading-5">{banner.detail}</p>
-                </div>
+                <p className="min-w-0 flex-1 truncate text-sm font-medium leading-5 text-[#10253f]" title={banner.title}>
+                  {banner.title}
+                </p>
               </div>
             </Card>
           ))}
