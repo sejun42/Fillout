@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Copy, LoaderCircle, Plus, Save, Search, Trash2, X } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Copy, LoaderCircle, Plus, Save, Search, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { useWorkoutApp } from "@/components/providers/workout-app-provider";
 import { Card, EmptyState, Pill, SectionHeading, buttonStyles } from "@/components/ui";
@@ -171,6 +171,26 @@ function SessionEditorForm({
     }));
   }
 
+  async function persistSession(redirectToHome = false) {
+    try {
+      const normalizedSession = normalizeBeforeSave();
+      setSaveState("saving");
+      await saveSession(normalizedSession);
+      setDraft(normalizedSession);
+      setSaveState("saved");
+      setSavedAtLabel(
+        new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
+      );
+
+      if (redirectToHome) {
+        router.push("/");
+      }
+    } catch (error) {
+      setSaveState("idle");
+      window.alert(error instanceof Error ? error.message : "세션 저장에 실패했습니다.");
+    }
+  }
+
   return (
     <div className="space-y-5">
       <Card className="space-y-4">
@@ -179,6 +199,22 @@ function SessionEditorForm({
           title={formatLongDate(sessionDate)}
           description="부위를 선택하고 필요한 운동과 세트를 기록하세요."
         />
+
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-[22px] bg-[#eef4fb] px-3 py-3">
+          <button type="button" className={buttonStyles("ghost")} onClick={() => router.push("/")}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            캘린더로
+          </button>
+          <button
+            type="button"
+            className={buttonStyles("secondary")}
+            disabled={draft.bodyPartIds.length === 0 || saveState === "saving"}
+            onClick={() => void persistSession(true)}
+          >
+            <Save className="mr-2 h-4 w-4" />
+            저장 후 캘린더
+          </button>
+        </div>
 
         <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
           <input
@@ -223,21 +259,7 @@ function SessionEditorForm({
               type="button"
               className={buttonStyles("primary")}
               disabled={draft.bodyPartIds.length === 0 || saveState === "saving"}
-              onClick={async () => {
-                try {
-                  const normalizedSession = normalizeBeforeSave();
-                  setSaveState("saving");
-                  await saveSession(normalizedSession);
-                  setDraft(normalizedSession);
-                  setSaveState("saved");
-                  setSavedAtLabel(
-                    new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
-                  );
-                } catch (error) {
-                  setSaveState("idle");
-                  window.alert(error instanceof Error ? error.message : "세션 저장에 실패했습니다.");
-                }
-              }}
+              onClick={() => void persistSession(false)}
             >
               {saveState === "saving" ? (
                 <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
