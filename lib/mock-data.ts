@@ -3,6 +3,7 @@ import { subDays } from "date-fns";
 import { toIsoDate } from "@/lib/date";
 import { createId } from "@/lib/utils";
 import type {
+  AppMode,
   BodyPart,
   BrandDefinition,
   ExerciseDefinition,
@@ -692,15 +693,43 @@ export function createEmptySession(userId: string, sessionDate: string): Workout
   };
 }
 
-export function createSeedState(): WorkoutAppState {
+function createCatalogState() {
   return {
-    mode: "demo",
-    profile: demoProfile,
     bodyParts,
     exercises: systemExercises,
     brands: systemBrands,
     machines: systemMachines,
     machineSettingTemplates,
+  };
+}
+
+export function createLoggedOutState(): WorkoutAppState {
+  return {
+    mode: "demo",
+    profile: null,
+    ...createCatalogState(),
+    sessions: [],
+  };
+}
+
+export function createDemoState(): WorkoutAppState {
+  return {
+    mode: "demo",
+    profile: demoProfile,
+    ...createCatalogState(),
     sessions: demoSessions,
   };
+}
+
+export function createPersonalState(profile: Profile, mode: AppMode): WorkoutAppState {
+  return {
+    mode,
+    profile,
+    ...createCatalogState(),
+    sessions: [],
+  };
+}
+
+export function createSeedState() {
+  return createLoggedOutState();
 }

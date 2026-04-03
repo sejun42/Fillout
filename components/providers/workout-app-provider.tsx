@@ -2,7 +2,7 @@
 
 import { createContext, startTransition, useContext, useEffect, useState } from "react";
 
-import { createSeedState } from "@/lib/mock-data";
+import { createDemoState, createPersonalState, createSeedState, createLoggedOutState, demoProfile } from "@/lib/mock-data";
 import { buildMachineTemplates } from "@/lib/workout";
 import { createId } from "@/lib/utils";
 import type {
@@ -15,7 +15,9 @@ import type {
   WorkoutSession,
 } from "@/types/domain";
 
-const STORAGE_KEY = "fillout-mvp-state";
+const LEGACY_STORAGE_KEY = "fillout-mvp-state";
+const STORAGE_PREFIX = "fillout-mvp-state";
+const ACTIVE_STORAGE_KEY = "fillout-mvp-active-workspace";
 
 interface WorkoutAppContextValue {
   state: WorkoutAppState;
@@ -43,6 +45,43 @@ function createProfile(email: string): Profile {
   };
 }
 
+function getWorkspaceStorageKey(profile: Profile | null, mode: AppMode) {
+  if (mode === "demo") {
+    return `${STORAGE_PREFIX}:demo`;
+  }
+
+  if (!profile) {
+    return null;
+  }
+
+  return `${STORAGE_PREFIX}:user:${profile.email.toLowerCase()}`;
+}
+
+function parseState(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(value) as WorkoutAppState;
+  } catch {
+    return null;
+  }
+}
+
+function shouldMigrateLegacyState(state: WorkoutAppState) {
+  if (state.profile?.email === demoProfile.email) {
+    return "demo" as const;
+  }
+
+  if (!state.profile) {
+    return null;
+  }
+
+  const ownsEverySession = state.sessions.every((session) => session.userId === state.profile?.id);
+  return ownsEverySession ? ("user" as const) : null;
+}
+
 export function WorkoutAppProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<WorkoutAppState>(() => createSeedState());
   const [hydrated, setHydrated] = useState(false);
@@ -51,18 +90,39 @@ export function WorkoutAppProvider({ children }: { children: React.ReactNode }) 
   );
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
+    const legacyState = parseState(window.localStorage.getItem(LEGACY_STORAGE_KEY));
+    const activeWorkspace = window.localStorage.getItem(ACTIVE_STORAGE_KEY);
 
     startTransition(() => {
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored) as WorkoutAppState;
-          setState(parsed);
-        } catch {
-          window.localStorage.removeItem(STORAGE_KEY);
+      if (legacyState) {
+        const migrationTarget = shouldMigrateLegacyState(legacyState);
+        if (migrationTarget === "demo") {
+          window.localStorage.setItem(`${STORAGE_PREFIX}:demo`, JSON.stringify(createDemoState()));
+        } else if (migrationTarget === "user" && legacyState.profile) {
+          const profile = legacyState.profile;
+          const key = getWorkspaceStorageKey(profile, legacyState.mode) ?? `${STORAGE_PREFIX}:user:${profile.email.toLowerCase()}`;
+          window.localStorage.setItem(
+            key,
+            JSON.stringify({
+              ...legacyState,
+              profile,
+            }),
+          );
+        }
+
+        window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+      }
+
+      if (activeWorkspace) {
+        const storedState = parseState(window.localStorage.getItem(activeWorkspace));
+        if (storedState) {
+          setState(storedState);
+          setHydrated(true);
+          return;
         }
       }
 
+      setState(createLoggedOutState());
       setHydrated(true);
     });
   }, []);
@@ -72,7 +132,14 @@ export function WorkoutAppProvider({ children }: { children: React.ReactNode }) 
       return;
     }
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const storageKey = getWorkspaceStorageKey(state.profile, state.mode);
+    if (storageKey) {
+      window.localStorage.setItem(storageKey, JSON.stringify(state));
+      window.localStorage.setItem(ACTIVE_STORAGE_KEY, storageKey);
+      return;
+    }
+
+    window.localStorage.removeItem(ACTIVE_STORAGE_KEY);
   }, [hydrated, state]);
 
   const value: WorkoutAppContextValue = {
@@ -80,18 +147,28 @@ export function WorkoutAppProvider({ children }: { children: React.ReactNode }) 
     hydrated,
     supabaseConfigured,
     signIn(email, mode = "demo") {
-      setState((current) => ({
-        ...current,
-        mode,
-        profile: createProfile(email),
-      }));
+      if (mode === "demo") {
+        const demoState = parseState(window.localStorage.getItem(`${STORAGE_PREFIX}:demo`)) ?? createDemoState();
+        setState(demoState);
+        return;
+      }
+
+      const profile = createProfile(email);
+      const storageKey = getWorkspaceStorageKey(profile, mode);
+      const storedState = storageKey ? parseState(window.localStorage.getItem(storageKey)) : null;
+
+      setState(
+        storedState
+          ? {
+              ...storedState,
+              mode,
+              profile,
+            }
+          : createPersonalState(profile, mode),
+      );
     },
     signOut() {
-      setState((current) => ({
-        ...current,
-        mode: "demo",
-        profile: null,
-      }));
+      setState(createLoggedOutState());
     },
     saveSession(session) {
       setState((current) => {

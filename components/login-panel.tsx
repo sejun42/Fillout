@@ -13,8 +13,8 @@ export function LoginPanel() {
   const router = useRouter();
   const { signIn, supabaseConfigured } = useWorkoutApp();
   const [mode, setMode] = useState<Mode>("sign-in");
-  const [email, setEmail] = useState("demo@fillout.fit");
-  const [password, setPassword] = useState("password1234");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
@@ -30,7 +30,7 @@ export function LoginPanel() {
       }
 
       if (!supabaseConfigured) {
-        signIn(trimmedEmail, "demo");
+        signIn(trimmedEmail, "supabase");
         router.replace("/");
         return;
       }
@@ -115,6 +115,7 @@ export function LoginPanel() {
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
+                placeholder="you@example.com"
                 className="w-full rounded-2xl border border-[#d5dfeb] bg-white px-4 py-3 text-sm"
               />
             </label>
@@ -124,6 +125,7 @@ export function LoginPanel() {
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
+                placeholder="비밀번호"
                 className="w-full rounded-2xl border border-[#d5dfeb] bg-white px-4 py-3 text-sm"
               />
             </label>
@@ -136,7 +138,7 @@ export function LoginPanel() {
                 type="button"
                 className={buttonStyles("secondary")}
                 onClick={() => {
-                  signIn(email.trim() || "demo@fillout.fit", "demo");
+                  signIn("demo@fillout.fit", "demo");
                   router.replace("/");
                 }}
               >
