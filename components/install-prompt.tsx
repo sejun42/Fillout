@@ -9,11 +9,22 @@ interface DeferredInstallPrompt extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 }
 
+function detectStandalone() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean };
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.matchMedia("(display-mode: fullscreen)").matches ||
+    navigatorWithStandalone.standalone === true
+  );
+}
+
 export function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<DeferredInstallPrompt | null>(null);
-  const [isStandalone] = useState(() =>
-    typeof window === "undefined" ? false : window.matchMedia("(display-mode: standalone)").matches,
-  );
+  const [isStandalone, setIsStandalone] = useState(detectStandalone);
   const [isIos] = useState(() =>
     typeof window === "undefined" ? false : /iPad|iPhone|iPod/.test(navigator.userAgent),
   );
@@ -27,6 +38,27 @@ export function InstallPrompt() {
     window.addEventListener("beforeinstallprompt", handler);
     return () => {
       window.removeEventListener("beforeinstallprompt", handler);
+    };
+  }, []);
+
+  useEffect(() => {
+    const standaloneMediaQuery = window.matchMedia("(display-mode: standalone)");
+    const fullscreenMediaQuery = window.matchMedia("(display-mode: fullscreen)");
+
+    function handleDisplayModeChange() {
+      setIsStandalone(detectStandalone());
+    }
+
+    standaloneMediaQuery.addEventListener("change", handleDisplayModeChange);
+    fullscreenMediaQuery.addEventListener("change", handleDisplayModeChange);
+    window.addEventListener("focus", handleDisplayModeChange);
+    window.addEventListener("pageshow", handleDisplayModeChange);
+
+    return () => {
+      standaloneMediaQuery.removeEventListener("change", handleDisplayModeChange);
+      fullscreenMediaQuery.removeEventListener("change", handleDisplayModeChange);
+      window.removeEventListener("focus", handleDisplayModeChange);
+      window.removeEventListener("pageshow", handleDisplayModeChange);
     };
   }, []);
 
