@@ -64,13 +64,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Link
               key={item.href}
               href={item.href}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
                 "flex min-w-16 flex-col items-center gap-1 rounded-[20px] px-3 py-2 text-xs font-medium transition",
-                isActive ? "bg-[#10253f] text-white" : "text-[#6b7d90]",
+                isActive ? "bg-[#10253f] shadow-[0_12px_28px_rgba(16,37,63,0.2)]" : "text-[#6b7d90]",
               )}
             >
-              <Icon className="h-4 w-4" />
-              <span>{item.label}</span>
+              <Icon className={cn("h-4 w-4", isActive ? "text-white" : "text-[#10253f]")} />
+              <span className={cn("leading-none", isActive ? "text-white" : "text-[#10253f]")}>{item.label}</span>
             </Link>
           );
         })}
