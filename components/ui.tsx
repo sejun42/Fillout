@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 export function buttonStyles(variant: "primary" | "secondary" | "ghost" | "danger" = "primary") {
   return cn(
-    "inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-semibold transition active:scale-[0.99]",
+    "inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-2xl px-4 py-2.5 text-sm font-semibold transition active:scale-[0.99]",
     variant === "primary" && "bg-[#10253f] text-white shadow-[0_12px_30px_rgba(16,37,63,0.24)]",
     variant === "secondary" && "bg-white/70 text-[#10253f] ring-1 ring-white/60 backdrop-blur",
     variant === "ghost" && "bg-transparent text-[#10253f] ring-1 ring-[#10253f]/12",

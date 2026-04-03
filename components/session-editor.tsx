@@ -1,10 +1,8 @@
 "use client";
-
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Copy, LoaderCircle, Plus, Save, Search, Trash2, X } from "lucide-react";
 import { useState } from "react";
-
 import { useWorkoutApp } from "@/components/providers/workout-app-provider";
 import { Card, EmptyState, Pill, SectionHeading, buttonStyles } from "@/components/ui";
 import { formatLongDate } from "@/lib/date";
@@ -21,6 +19,12 @@ import {
 } from "@/lib/workout";
 import { createId } from "@/lib/utils";
 import type { ExerciseDefinition, SessionExercise, WorkoutSession } from "@/types/domain";
+
+const saveLabel = {
+  idle: "저장",
+  saving: "저장 중...",
+  saved: "저장 완료",
+} as const;
 
 function cloneSession(session: WorkoutSession) {
   return JSON.parse(JSON.stringify(session)) as WorkoutSession;
@@ -73,35 +77,29 @@ function SessionEditorForm({
 }) {
   const router = useRouter();
   const { state, saveSession, deleteSession, isSyncing, syncError } = useWorkoutApp();
-  const [draft, setDraft] = useState<WorkoutSession>(initialSession);
+  const [draft, setDraft] = useState(initialSession);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">(
-    existingSessionId ? "saved" : "idle",
-  );
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">(existingSessionId ? "saved" : "idle");
   const [savedAtLabel, setSavedAtLabel] = useState<string | null>(
     existingSessionId
-      ? new Date(initialSession.updatedAt).toLocaleTimeString("ko-KR", {
-          hour: "2-digit",
-          minute: "2-digit",
-        })
+      ? new Date(initialSession.updatedAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })
       : null,
   );
+
   const existingSession = existingSessionId
     ? state.sessions.find((session) => session.id === existingSessionId) ?? null
     : null;
   const comparison = getSessionComparison(state, sessionDate);
   const exerciseLookup = new Map(state.exercises.map((exercise) => [exercise.id, exercise]));
   const machineLookup = new Map(state.machines.map((machine) => [machine.id, machine]));
-  const hasRequiredInput = draft.bodyPartIds.length > 0;
-
   const filteredExercises = state.exercises
     .filter((exercise) => exercise.name.toLowerCase().includes(search.trim().toLowerCase()))
     .sort((left, right) => Number(right.isSystem) - Number(left.isSystem));
 
   function patchDraft(updater: (current: WorkoutSession) => WorkoutSession) {
     setSaveState("idle");
-    setDraft((current) => (current ? updater(current) : current));
+    setDraft((current) => updater(current));
   }
 
   function patchExercise(exerciseId: string, updater: (exercise: SessionExercise) => SessionExercise) {
@@ -110,52 +108,6 @@ function SessionEditorForm({
       exercises: current.exercises.map((exercise, index) =>
         exercise.id === exerciseId ? { ...updater(exercise), orderIndex: index + 1 } : exercise,
       ),
-    }));
-  }
-
-  function handleAddExercise(definition: ExerciseDefinition) {
-    const previous = findPreviousExerciseRecord({
-      sessions: state.sessions,
-      currentSessionDate: sessionDate,
-      currentSessionId: draft.id,
-      exerciseDefinitionId: definition.id,
-      machineId: null,
-    });
-    const nextExercise = createEmptySessionExercise(definition.id, draft.exercises.length + 1);
-
-    if (previous) {
-      nextExercise.sets = cloneExerciseFromPrevious(previous.exercise);
-    }
-
-    patchDraft((current) => ({
-      ...current,
-      exercises: [...current.exercises, nextExercise],
-    }));
-    setIsModalOpen(false);
-    setSearch("");
-  }
-
-  function fillPreviousRecord(exercise: SessionExercise) {
-    const previous = findPreviousExerciseRecord({
-      sessions: state.sessions,
-      currentSessionDate: sessionDate,
-      currentSessionId: draft.id,
-      exerciseDefinitionId: exercise.exerciseDefinitionId,
-      machineId: exercise.machineId,
-    });
-
-    if (!previous) {
-      return;
-    }
-
-    const templates = getMachineTemplates(exercise.machineId, state.machineSettingTemplates);
-    patchExercise(exercise.id, (currentExercise) => ({
-      ...currentExercise,
-      settings: templates.length
-        ? syncSettingsWithTemplates(currentExercise.settings, templates, previous.exercise.settings)
-        : currentExercise.settings,
-      sets: cloneExerciseFromPrevious(previous.exercise),
-      updatedAt: new Date().toISOString(),
     }));
   }
 
@@ -180,21 +132,65 @@ function SessionEditorForm({
     };
   }
 
+  function handleAddExercise(definition: ExerciseDefinition) {
+    const previous = findPreviousExerciseRecord({
+      sessions: state.sessions,
+      currentSessionDate: sessionDate,
+      currentSessionId: draft.id,
+      exerciseDefinitionId: definition.id,
+      machineId: null,
+    });
+    const nextExercise = createEmptySessionExercise(definition.id, draft.exercises.length + 1);
+    if (previous) {
+      nextExercise.sets = cloneExerciseFromPrevious(previous.exercise);
+    }
+    patchDraft((current) => ({ ...current, exercises: [...current.exercises, nextExercise] }));
+    setIsModalOpen(false);
+    setSearch("");
+  }
+
+  function fillPreviousRecord(exercise: SessionExercise) {
+    const previous = findPreviousExerciseRecord({
+      sessions: state.sessions,
+      currentSessionDate: sessionDate,
+      currentSessionId: draft.id,
+      exerciseDefinitionId: exercise.exerciseDefinitionId,
+      machineId: exercise.machineId,
+    });
+    if (!previous) {
+      return;
+    }
+    const templates = getMachineTemplates(exercise.machineId, state.machineSettingTemplates);
+    patchExercise(exercise.id, (currentExercise) => ({
+      ...currentExercise,
+      settings: templates.length
+        ? syncSettingsWithTemplates(currentExercise.settings, templates, previous.exercise.settings)
+        : currentExercise.settings,
+      sets: cloneExerciseFromPrevious(previous.exercise),
+      updatedAt: new Date().toISOString(),
+    }));
+  }
+
   return (
     <div className="space-y-5">
       <Card className="space-y-4">
-        <SectionHeading eyebrow="Workout session" title={formatLongDate(sessionDate)} description="부위 선택 후 운동을 추가하고 바로 저장합니다." />
-        <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+        <SectionHeading
+          eyebrow="Workout Session"
+          title={formatLongDate(sessionDate)}
+          description="부위를 선택하고 필요한 운동과 세트를 기록하세요."
+        />
+
+        <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
           <input
             value={draft.title}
             onChange={(event) => patchDraft((current) => ({ ...current, title: event.target.value }))}
             placeholder="세션 제목 (선택)"
-            className="rounded-2xl border border-[#d5dfeb] bg-white px-4 py-3 text-sm"
+            className="min-w-0 w-full rounded-2xl border border-[#d5dfeb] bg-white px-4 py-3 text-sm"
           />
+
           <div className="flex flex-wrap gap-2">
             {state.bodyParts.map((bodyPart) => {
               const selected = draft.bodyPartIds.includes(bodyPart.id);
-
               return (
                 <button
                   key={bodyPart.id}
@@ -210,24 +206,23 @@ function SessionEditorForm({
                   className={`rounded-full px-3 py-2 text-xs font-semibold transition ${
                     selected ? "text-white" : "text-[#3f5f80]"
                   }`}
-                  style={{
-                    backgroundColor: selected ? bodyPart.color : "#eef4fb",
-                  }}
+                  style={{ backgroundColor: selected ? bodyPart.color : "#eef4fb" }}
                 >
                   {bodyPart.name}
                 </button>
               );
             })}
           </div>
-          <div className="flex gap-2">
+
+          <div className="flex flex-wrap gap-2 lg:justify-end">
             <button type="button" className={buttonStyles("secondary")} onClick={() => setIsModalOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               운동 추가
             </button>
             <button
               type="button"
-              className={`${buttonStyles("primary")} relative text-transparent`}
-              disabled={!hasRequiredInput || saveState === "saving"}
+              className={buttonStyles("primary")}
+              disabled={draft.bodyPartIds.length === 0 || saveState === "saving"}
               onClick={async () => {
                 try {
                   const normalizedSession = normalizeBeforeSave();
@@ -236,10 +231,7 @@ function SessionEditorForm({
                   setDraft(normalizedSession);
                   setSaveState("saved");
                   setSavedAtLabel(
-                    new Date().toLocaleTimeString("ko-KR", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    }),
+                    new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
                   );
                 } catch (error) {
                   setSaveState("idle");
@@ -247,26 +239,14 @@ function SessionEditorForm({
                 }
               }}
             >
-              <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-white">
-                {saveState === "saving" ? (
-                  <>
-                    <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-                    저장 중...
-                  </>
-                ) : saveState === "saved" ? (
-                  <>
-                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                    저장 완료
-                  </>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    저장
-                  </>
-                )}
-              </span>
-              <Save className="mr-2 h-4 w-4 opacity-0" />
-              저장
+              {saveState === "saving" ? (
+                <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+              ) : saveState === "saved" ? (
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
+              {saveLabel[saveState]}
             </button>
           </div>
         </div>
@@ -281,7 +261,7 @@ function SessionEditorForm({
         <div className="flex flex-wrap items-center gap-2">
           <Pill>{summarizeSessionTitle(draft, state.bodyParts)}</Pill>
           <Pill>운동 {draft.exercises.length}개</Pill>
-          <Pill>저장 상태 {existingSession ? "기존 세션 수정" : "새 세션"}</Pill>
+          <Pill>{existingSession ? "기존 세션 수정" : "새 세션"}</Pill>
           <Pill
             className={
               saveState === "saved"
@@ -291,11 +271,7 @@ function SessionEditorForm({
                   : "bg-[#fff4e8] text-[#8b4a18]"
             }
           >
-            {saveState === "saved"
-              ? `저장됨${savedAtLabel ? ` · ${savedAtLabel}` : ""}`
-              : saveState === "saving"
-                ? "저장 중"
-                : "저장 필요"}
+            {saveState === "saved" ? `저장됨${savedAtLabel ? ` · ${savedAtLabel}` : ""}` : saveLabel[saveState]}
           </Pill>
           {isSyncing ? <Pill>Supabase 동기화 중</Pill> : null}
           {syncError ? <Pill className="bg-[#a93f3a] text-white">{syncError}</Pill> : null}
@@ -304,13 +280,14 @@ function SessionEditorForm({
               type="button"
               className={buttonStyles("danger")}
               onClick={async () => {
-                if (window.confirm("이 날짜의 세션을 삭제할까요?")) {
-                  try {
-                    await deleteSession(existingSession.id);
-                    router.push("/");
-                  } catch (error) {
-                    window.alert(error instanceof Error ? error.message : "세션 삭제에 실패했습니다.");
-                  }
+                if (!window.confirm("이 날짜의 세션을 삭제할까요?")) {
+                  return;
+                }
+                try {
+                  await deleteSession(existingSession.id);
+                  router.push("/");
+                } catch (error) {
+                  window.alert(error instanceof Error ? error.message : "세션 삭제에 실패했습니다.");
                 }
               }}
             >
@@ -323,7 +300,7 @@ function SessionEditorForm({
 
       <section className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
         <Card>
-          <SectionHeading eyebrow="Progress" title="지난 세션 비교" description="같은 주부위 기준 직전 세션과 비교" />
+          <SectionHeading eyebrow="Progress" title="지난 세션 비교" description="직전 기록 대비 변화" />
           <div className="mt-4 grid grid-cols-3 gap-3">
             <div className="rounded-[20px] bg-[#eef4fb] p-4">
               <p className="text-xs text-[#647b95]">볼륨 변화</p>
@@ -350,11 +327,11 @@ function SessionEditorForm({
         </Card>
 
         <Card>
-          <SectionHeading eyebrow="Guide" title="빠른 입력 팁" description="운동 중 탭 수를 줄이는 데 집중한 규칙" />
+          <SectionHeading eyebrow="Guide" title="빠른 입력 팁" description="운동 중 입력 시간을 줄이는 규칙" />
           <div className="mt-4 space-y-3 text-sm leading-6 text-[#56697f]">
-            <div className="rounded-[20px] bg-[#f5f8fb] p-4">머신을 선택하면 이전 세팅값을 자동으로 미리 채웁니다.</div>
-            <div className="rounded-[20px] bg-[#f5f8fb] p-4">새 세트는 직전 세트 값을 복사해서 추가합니다.</div>
-            <div className="rounded-[20px] bg-[#f5f8fb] p-4">각 세트 입력 칸에는 직전 기록이 placeholder로 표시됩니다.</div>
+            <div className="rounded-[20px] bg-[#f5f8fb] p-4">머신을 선택하면 이전 세팅값을 자동으로 불러옵니다.</div>
+            <div className="rounded-[20px] bg-[#f5f8fb] p-4">이전 기록이 있으면 세트도 한 번에 채울 수 있습니다.</div>
+            <div className="rounded-[20px] bg-[#f5f8fb] p-4">각 세트 입력칸에는 지난 기록이 함께 표시됩니다.</div>
           </div>
         </Card>
       </section>
@@ -362,7 +339,7 @@ function SessionEditorForm({
       {draft.exercises.length === 0 ? (
         <EmptyState
           title="아직 추가된 운동이 없습니다"
-          description="세션 부위를 선택한 뒤 `운동 추가`로 기본 라이브러리나 커스텀 운동을 넣으세요."
+          description="부위만 먼저 저장하거나, 운동 추가 버튼으로 운동을 넣어보세요."
           action={
             <button type="button" className={buttonStyles("primary")} onClick={() => setIsModalOpen(true)}>
               운동 추가 열기
@@ -390,19 +367,17 @@ function SessionEditorForm({
                 <Card key={exercise.id} className="space-y-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#68819d]">
-                        Exercise {index + 1}
-                      </p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#68819d]">Exercise {index + 1}</p>
                       <h3 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-[#10253f]">
                         {definition?.name ?? "운동"}
                       </h3>
                       <div className="mt-2 flex flex-wrap gap-2">
-                        <Pill>{definition ? getBodyPartName(definition.primaryBodyPartId, state.bodyParts) : "부위"}</Pill>
+                        <Pill>{definition ? getBodyPartName(definition.primaryBodyPartId, state.bodyParts) : "부위 미지정"}</Pill>
                         <Pill>{definition?.exerciseType ?? "other"}</Pill>
                         {machine ? <Pill>{getBrandName(machine, state.brands)}</Pill> : <Pill>머신 선택 안 함</Pill>}
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       {previous ? (
                         <button type="button" className={buttonStyles("secondary")} onClick={() => fillPreviousRecord(exercise)}>
                           <Copy className="mr-2 h-4 w-4" />
@@ -445,21 +420,13 @@ function SessionEditorForm({
                           const hasTypedSets = currentExercise.sets.some(
                             (set) => set.weightValue != null || set.reps != null || set.isCompleted,
                           );
-
                           return {
                             ...currentExercise,
                             machineId,
                             settings: machineId
-                              ? syncSettingsWithTemplates(
-                                  currentExercise.settings,
-                                  nextTemplates,
-                                  previousRecord?.exercise.settings,
-                                )
+                              ? syncSettingsWithTemplates(currentExercise.settings, nextTemplates, previousRecord?.exercise.settings)
                               : [],
-                            sets:
-                              !hasTypedSets && previousRecord
-                                ? cloneExerciseFromPrevious(previousRecord.exercise)
-                                : currentExercise.sets,
+                            sets: !hasTypedSets && previousRecord ? cloneExerciseFromPrevious(previousRecord.exercise) : currentExercise.sets,
                             updatedAt: new Date().toISOString(),
                           };
                         });
@@ -476,10 +443,7 @@ function SessionEditorForm({
                     <textarea
                       value={exercise.notes}
                       onChange={(event) =>
-                        patchExercise(exercise.id, (currentExercise) => ({
-                          ...currentExercise,
-                          notes: event.target.value,
-                        }))
+                        patchExercise(exercise.id, (currentExercise) => ({ ...currentExercise, notes: event.target.value }))
                       }
                       placeholder="운동 메모"
                       className="min-h-24 rounded-[24px] border border-[#d5dfeb] bg-white px-4 py-3 text-sm"
@@ -490,14 +454,11 @@ function SessionEditorForm({
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-semibold text-[#10253f]">머신 세팅값</p>
-                        {previous ? (
-                          <p className="text-xs text-[#68819d]">이전 기록 {previous.session.sessionDate} 기준 자동 프리필</p>
-                        ) : null}
+                        {previous ? <p className="text-xs text-[#68819d]">이전 기록 자동 프리필</p> : null}
                       </div>
                       <div className="grid gap-3 md:grid-cols-3">
                         {templates.map((template) => {
                           const currentSetting = exercise.settings.find((setting) => setting.templateId === template.id);
-
                           if (template.fieldType === "dropdown") {
                             return (
                               <label key={template.id} className="space-y-2">
@@ -508,9 +469,7 @@ function SessionEditorForm({
                                     patchExercise(exercise.id, (currentExercise) => ({
                                       ...currentExercise,
                                       settings: syncSettingsWithTemplates(currentExercise.settings, templates).map((setting) =>
-                                        setting.templateId === template.id
-                                          ? { ...setting, valueText: event.target.value }
-                                          : setting,
+                                        setting.templateId === template.id ? { ...setting, valueText: event.target.value } : setting,
                                       ),
                                     }))
                                   }
@@ -518,15 +477,12 @@ function SessionEditorForm({
                                 >
                                   <option value="">선택</option>
                                   {template.options?.map((option) => (
-                                    <option key={option} value={option}>
-                                      {option}
-                                    </option>
+                                    <option key={option} value={option}>{option}</option>
                                   ))}
                                 </select>
                               </label>
                             );
                           }
-
                           return (
                             <label key={template.id} className="space-y-2">
                               <span className="text-xs font-medium text-[#60758e]">{template.fieldLabel}</span>
@@ -537,9 +493,7 @@ function SessionEditorForm({
                                   patchExercise(exercise.id, (currentExercise) => ({
                                     ...currentExercise,
                                     settings: syncSettingsWithTemplates(currentExercise.settings, templates).map((setting) =>
-                                      setting.templateId === template.id
-                                        ? { ...setting, valueText: event.target.value }
-                                        : setting,
+                                      setting.templateId === template.id ? { ...setting, valueText: event.target.value } : setting,
                                     ),
                                   }))
                                 }
@@ -560,13 +514,13 @@ function SessionEditorForm({
                         type="button"
                         className={buttonStyles("ghost")}
                         onClick={() =>
-                          patchExercise(exercise.id, (currentExercise) => {
-                            const lastSet = currentExercise.sets.at(-1);
-                            return {
-                              ...currentExercise,
-                              sets: [...currentExercise.sets, createDefaultSet(currentExercise.sets.length + 1, lastSet)],
-                            };
-                          })
+                          patchExercise(exercise.id, (currentExercise) => ({
+                            ...currentExercise,
+                            sets: [
+                              ...currentExercise.sets,
+                              createDefaultSet(currentExercise.sets.length + 1, currentExercise.sets.at(-1)),
+                            ],
+                          }))
                         }
                       >
                         <Plus className="mr-2 h-4 w-4" />
@@ -576,20 +530,12 @@ function SessionEditorForm({
 
                     <div className="overflow-hidden rounded-[22px] border border-[#dbe5ef]">
                       <div className="grid grid-cols-[60px_1fr_1fr_72px_44px] bg-[#eef4fb] px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#67819c]">
-                        <span>세트</span>
-                        <span>무게</span>
-                        <span>횟수</span>
-                        <span>이전</span>
-                        <span>완료</span>
+                        <span>세트</span><span>무게</span><span>횟수</span><span>이전</span><span>완료</span>
                       </div>
                       {exercise.sets.map((set, setIndex) => {
                         const previousSet = previous?.exercise.sets[setIndex];
-
                         return (
-                          <div
-                            key={set.id}
-                            className="grid grid-cols-[60px_1fr_1fr_72px_44px] items-center gap-2 border-t border-[#eef3f7] px-3 py-3 text-sm"
-                          >
+                          <div key={set.id} className="grid grid-cols-[60px_1fr_1fr_72px_44px] items-center gap-2 border-t border-[#eef3f7] px-3 py-3 text-sm">
                             <span className="font-semibold text-[#10253f]">{setIndex + 1}</span>
                             <input
                               type="number"
@@ -601,11 +547,7 @@ function SessionEditorForm({
                                   ...currentExercise,
                                   sets: currentExercise.sets.map((currentSet, currentIndex) =>
                                     currentIndex === setIndex
-                                      ? {
-                                          ...currentSet,
-                                          weightValue:
-                                            event.target.value === "" ? null : Number(event.target.value),
-                                        }
+                                      ? { ...currentSet, weightValue: event.target.value === "" ? null : Number(event.target.value) }
                                       : currentSet,
                                   ),
                                 }))
@@ -621,10 +563,7 @@ function SessionEditorForm({
                                   ...currentExercise,
                                   sets: currentExercise.sets.map((currentSet, currentIndex) =>
                                     currentIndex === setIndex
-                                      ? {
-                                          ...currentSet,
-                                          reps: event.target.value === "" ? null : Number(event.target.value),
-                                        }
+                                      ? { ...currentSet, reps: event.target.value === "" ? null : Number(event.target.value) }
                                       : currentSet,
                                   ),
                                 }))
@@ -641,12 +580,7 @@ function SessionEditorForm({
                                 patchExercise(exercise.id, (currentExercise) => ({
                                   ...currentExercise,
                                   sets: currentExercise.sets.map((currentSet, currentIndex) =>
-                                    currentIndex === setIndex
-                                      ? {
-                                          ...currentSet,
-                                          isCompleted: event.target.checked,
-                                        }
-                                      : currentSet,
+                                    currentIndex === setIndex ? { ...currentSet, isCompleted: event.target.checked } : currentSet,
                                   ),
                                 }))
                               }
@@ -675,24 +609,14 @@ function SessionEditorForm({
                 <X className="h-4 w-4" />
               </button>
             </div>
-
             <div className="mt-4 flex items-center gap-3 rounded-[24px] border border-[#d8e2ec] bg-white px-4 py-3">
               <Search className="h-4 w-4 text-[#6d8298]" />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="운동명 검색"
-                className="w-full bg-transparent text-sm outline-none"
-              />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="운동명 검색" className="w-full bg-transparent text-sm outline-none" />
             </div>
-
             <div className="mt-4 flex items-center justify-between">
               <p className="text-sm text-[#60758e]">검색 결과 {filteredExercises.length}개</p>
-              <Link href="/library" className={buttonStyles("secondary")}>
-                커스텀 운동 추가
-              </Link>
+              <Link href="/library" className={buttonStyles("secondary")}>커스텀 운동 추가</Link>
             </div>
-
             <div className="mt-4 grid max-h-[52vh] gap-3 overflow-y-auto pr-1">
               {filteredExercises.map((exercise) => (
                 <button
@@ -704,9 +628,7 @@ function SessionEditorForm({
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-base font-semibold text-[#10253f]">{exercise.name}</p>
-                      <p className="mt-1 text-sm text-[#64788f]">
-                        {getBodyPartName(exercise.primaryBodyPartId, state.bodyParts)} · {exercise.exerciseType}
-                      </p>
+                      <p className="mt-1 text-sm text-[#64788f]">{getBodyPartName(exercise.primaryBodyPartId, state.bodyParts)} · {exercise.exerciseType}</p>
                     </div>
                     <Pill className={exercise.isSystem ? "bg-[#eef4fb]" : "bg-[#10253f] text-white"}>
                       {exercise.isSystem ? "기본" : "커스텀"}
